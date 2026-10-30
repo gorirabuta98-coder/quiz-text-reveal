@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クイズ問題文 文字確認ツール</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Inter & Zen Maru Gothic) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            min-height: 100vh;
+        }
+
+        /* 3Dカード効果とアニメーション */
+        .char-card {
+            perspective: 1000px;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+        }
+
+        .char-card.revealed .card-inner {
+            transform: scale(1.05);
+        }
+
+        /* 押下時のフィードバック */
+        .char-card:active .card-inner {
+            transform: scale(0.92) !important;
+        }
+
+        /* アニメーション用パルス効果 */
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animate-pop {
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* ネオン発光エフェクト */
+        .glow-effect {
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .glow-gold {
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), inset 0 0 15px rgba(254, 240, 138, 0.5);
+        }
+    </style>
+</head>
+<body class="text-slate-100 flex flex-col justify-between min-h-screen p-4 sm:p-6 md:p-8">
+
+    <!-- メインコンテンツコンテナ -->
+    <div class="max-w-5xl mx-auto w-full space-y-6">
+
+        <!-- ヘッダーエリア -->
+        <header class="text-center space-y-2 relative">
+            <div class="inline-block bg-pink-500/20 text-pink-300 border border-pink-500/30 text-xs sm:text-sm px-3 py-1 rounded-full font-bold tracking-wider mb-1">
+                <i class="fa-solid fa-graduation-cap mr-1"></i> QUIZ TEXT REVEAL
+            </div>
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-400 to-cyan-300 drop-shadow">
+                クイズ文字オープン確認
+            </h1>
+            <p class="text-slate-400 text-xs sm:text-sm">
+                問題文の任意の何文字目かをクリックしてピピッ！と開閉チェック
+            </p>
+        </header>
+
+        <!-- 入力セクション -->
+        <section class="bg-slate-800/80 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-slate-700/80 shadow-2xl space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                <label for="quizInput" class="text-sm font-bold text-slate-300 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-cyan-400"></i> 問題文を入力してください
+                </label>
+                <!-- プリセット選択 -->
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="text-slate-400">サンプル:</span>
+                    <button type="button" onclick="loadSample(0)" class="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition text-cyan-300">山</button>
+                    <button type="button" onclick="loadSample(1)" class="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition text-pink-300">歴史</button>
+                    <button type="button" onclick="loadSample(2)" class="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition text-yellow-300">科学</button>
+                </div>
+            </div>
+
+            <div class="relative">
+                <textarea id="quizInput" rows="3" class="w-full bg-slate-900/90 text-white placeholder-slate-500 p-3.5 rounded-xl border border-slate-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 outline-none transition duration-200 resize-y text-base sm:text-lg" placeholder="ここにクイズの問題文を入力..."></textarea>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div class="text-xs text-slate-400" id="charCount">
+                    文字数: <span class="font-bold text-white">0</span> 文字
+                </div>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button id="clearBtn" type="button" class="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm active:scale-95">
+                        <i class="fa-solid fa-trash-can"></i> 消去
+                    </button>
+                    <button id="setQuizBtn" type="button" class="flex-1 sm:flex-initial px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl font-black shadow-lg shadow-cyan-500/20 transition flex items-center justify-center gap-2 text-sm active:scale-95">
+                        <i class="fa-solid fa-play"></i> セットする
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 一括操作 ＆ サウンドトグルコントロール -->
+        <section class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/60 p-3 sm:p-4 rounded-xl border border-slate-800">
+            <div class="flex items-center gap-2">
+                <button id="showAllBtn" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs sm:text-sm transition flex items-center gap-1.5 shadow active:scale-95">
+                    <i class="fa-solid fa-eye"></i> 全て表示
+                </button>
+                <button id="hideAllBtn" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold text-xs sm:text-sm transition flex items-center gap-1.5 shadow active:scale-95">
+                    <i class="fa-solid fa-eye-slash"></i> 全て隠す
+                </button>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- オーディオ切り替え -->
+                <button id="soundToggleBtn" class="text-xs sm:text-sm text-slate-300 hover:text-white flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-cyan-400"></i>
+                    <span id="soundLabel">効果音: ON</span>
+                </button>
+                <div class="text-xs text-slate-400">
+                    表示中: <span id="openCount" class="font-bold text-yellow-400">0</span> / <span id="totalCount" class="font-bold text-white">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 文字カード表示エリア -->
+        <main class="bg-slate-900/80 p-4 sm:p-8 rounded-2xl border border-slate-800 min-h-[220px] flex flex-col justify-center items-center shadow-inner relative">
+            <div id="cardsContainer" class="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-full">
+                <!-- JavaScriptでここに動的に文字カードが生成されます -->
+            </div>
+            <div id="emptyNotice" class="text-slate-500 text-center py-8">
+                <i class="fa-solid fa-cubes text-4xl mb-3 opacity-40 block"></i>
+                <p>問題文を入力して「セットする」を押してください</p>
+            </div>
+        </main>
+
+        <!-- 補足説明 -->
+        <footer class="text-center text-xs text-slate-500 space-y-1">
+            <p><i class="fa-solid fa-lightbulb text-yellow-500 mr-1"></i> ヒント: 各カードの上部にある数字は「何文字目か」を示しています。</p>
+            <p>※改行やスペースも1カードとして扱われます（空白文字は点線枠で表示）。</p>
+        </footer>
+
+    </div>
+
+    <!-- JavaScript ロジック -->
+    <script>
+        // --- 状態管理 ---
+        let currentText = "";
+        let charStates = []; // booleanの配列 (開いているか閉じるか)
+        let soundEnabled = true;
+
+        // サンプルデータ
+        const SAMPLES = [
+            "日本一高い山は何でしょう？",
+            "1600年、関ヶ原の戦いで勝利し、後に江戸幕府を開いた人物は誰でしょう？",
+            "元素記号「Au」で表される、日本語では「金」と呼ばれる貴金属は何でしょう？"
+        ];
+
+        // --- DOM要素 ---
+        const quizInput = document.getElementById('quizInput');
+        const setQuizBtn = document.getElementById('setQuizBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const cardsContainer = document.getElementById('cardsContainer');
+        const emptyNotice = document.getElementById('emptyNotice');
+        const showAllBtn = document.getElementById('showAllBtn');
+        const hideAllBtn = document.getElementById('hideAllBtn');
+        const charCountEl = document.getElementById('charCount');
+        const openCountEl = document.getElementById('openCount');
+        const totalCountEl = document.getElementById('totalCount');
+        const soundToggleBtn = document.getElementById('soundToggleBtn');
+        const soundIcon = document.getElementById('soundIcon');
+        const soundLabel = document.getElementById('soundLabel');
+
+        // --- Web Audio API（サウンド合成機能）---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        /**
+         * クイズ番組風のクリアな「ピピッ」効果音を再生
+         * @param {boolean} isOpening - 開く音(high)か閉じる音(low)か
+         */
+        function playBeepSound(isOpening = true) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            if (isOpening) {
+                // 開くときのサウンド：「ピピッ」（高音の2連音）
+                playTone(1200, now, 0.04, 'sine');
+                playTone(1800, now + 0.05, 0.08, 'sine');
+            } else {
+                // 閉じるときのサウンド：「ポッ」（少し低めの単音）
+                playTone(600, now, 0.06, 'triangle');
+            }
+        }
+
+        function playTone(freq, startTime, duration, type = 'sine') {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            // 音量エンベロープ（プチ音防止）
+            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        // --- 初期化 ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // 最初からサンプルを設定
+            quizInput.value = SAMPLES[0];
+            updateCharCount();
+            setupQuiz();
+        });
+
+        // テキスト入力時のリアルタイム文字数カウント
+        quizInput.addEventListener('input', updateCharCount);
+
+        function updateCharCount() {
+            const len = Array.from(quizInput.value).length;
+            charCountEl.innerHTML = `文字数: <span class="font-bold text-white">${len}</span> 文字`;
+        }
+
+        // サンプル呼び出し機能
+        window.loadSample = function(index) {
+            if (SAMPLES[index]) {
+                quizInput.value = SAMPLES[index];
+                updateCharCount();
+                setupQuiz();
+            }
+        };
+
+        // Clear ボタン
+        clearBtn.addEventListener('click', () => {
+            quizInput.value = "";
+            updateCharCount();
+            setupQuiz();
+            quizInput.focus();
+        });
+
+        // セットする ボタン
+        setQuizBtn.addEventListener('click', () => {
+            initAudio();
+            setupQuiz();
+        });
+
+        // --- クイズカード構築ロジック ---
+        function setupQuiz() {
+            // 絵文字などのサロゲートペアにも対応した1文字分解
+            currentText = quizInput.value;
+            const chars = Array.from(currentText);
+
+            if (chars.length === 0) {
+                cardsContainer.innerHTML = '';
+                emptyNotice.classList.remove('hidden');
+                updateCounters(0, 0);
+                return;
+            }
+
+            emptyNotice.classList.add('hidden');
+            cardsContainer.innerHTML = '';
+
+            // 全て非表示で初期化
+            charStates = new Array(chars.length).fill(false);
+
+            chars.forEach((char, index) => {
+                const cardNode = createCharCard(char, index);
+                cardsContainer.appendChild(cardNode);
+            });
+
+            updateCounters(0, chars.length);
+        }
+
+        /**
+         * 1文字分のカードエレメントを作成
+         */
+        function createCharCard(char, index) {
+            const isSpace = (char === ' ' || char === '　' || char === '\n');
+            const displayIndex = index + 1;
+
+            const card = document.createElement('div');
+            card.className = 'char-card w-11 h-16 sm:w-14 sm:h-20 cursor-pointer animate-pop';
+            card.style.animationDelay = `${Math.min(index * 0.02, 0.5)}s`;
+            card.dataset.index = index;
+
+            // 空白文字の判定調整
+            const charToShow = char === '\n' ? '↵' : char;
+
+            // 各要素を安全に保持・参照できるように構築
+            const inner = document.createElement('div');
+            inner.className = isSpace 
+                ? 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-dashed border-slate-600 bg-slate-800/40' 
+                : 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 shadow-md hover:border-cyan-500/50';
+
+            const idxSpan = document.createElement('span');
+            idxSpan.className = 'text-[10px] sm:text-xs font-mono font-bold text-slate-400 select-none';
+            idxSpan.textContent = displayIndex;
+
+            const content = document.createElement('div');
+            content.className = 'char-content flex-1 flex items-center justify-center font-black text-xl sm:text-2xl transition-all duration-150 text-slate-600';
+            content.textContent = '?';
+
+            const dot = document.createElement('div');
+            dot.className = 'status-dot w-1.5 h-1.5 rounded-full bg-slate-700';
+
+            inner.appendChild(idxSpan);
+            inner.appendChild(content);
+            inner.appendChild(dot);
+            card.appendChild(inner);
+
+            // クリックイベント（開閉切替）
+            card.addEventListener('click', () => {
+                toggleCardState(index, card, charToShow, isSpace);
+            });
+
+            return card;
+        }
+
+        /**
+         * カードの状態（開/閉）をトグル
+         */
+        function toggleCardState(index, cardEl, charText, isSpace) {
+            const newState = !charStates[index];
+            charStates[index] = newState;
+
+            playBeepSound(newState);
+
+            renderCardState(cardEl, newState, charText, isSpace);
+            updateCounters();
+        }
+
+        /**
+         * カードの見た目をレンダリング
+         */
+        function renderCardState(cardEl, isOpen, charText, isSpace) {
+            const inner = cardEl.querySelector('.card-inner');
+            const content = cardEl.querySelector('.char-content');
+            const dot = cardEl.querySelector('.status-dot');
+
+            if (!inner || !content || !dot) return;
+
+            if (isOpen) {
+                cardEl.classList.add('revealed');
+                
+                // 開いた状態のスタイル
+                if (isSpace) {
+                    inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-slate-500 bg-slate-700/60 shadow-lg';
+                    content.className = 'char-content flex-1 flex items-center justify-center font-bold text-lg sm:text-xl text-slate-300';
+                } else {
+                    inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-yellow-400 bg-gradient-to-b from-amber-400 to-yellow-500 text-slate-950 glow-gold shadow-lg';
+                    content.className = 'char-content flex-1 flex items-center justify-center font-black text-2xl sm:text-3xl text-slate-900 drop-shadow-sm scale-110 transition-transform';
+                }
+                content.textContent = charText;
+                dot.className = 'status-dot w-1.5 h-1.5 rounded-full bg-slate-900';
+
+            } else {
+                cardEl.classList.remove('revealed');
+
+                // 伏せ状態のスタイル
+                if (isSpace) {
+                    inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-dashed border-slate-600 bg-slate-800/40';
+                } else {
+                    inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 shadow-md hover:border-cyan-500/50';
+                }
+                content.className = 'char-content flex-1 flex items-center justify-center font-black text-xl sm:text-2xl text-slate-600';
+                content.textContent = '?';
+                dot.className = 'status-dot w-1.5 h-1.5 rounded-full bg-slate-700';
+            }
+        }
+
+        // --- 全体一括操作 ---
+        showAllBtn.addEventListener('click', () => {
+            setAllCardsState(true);
+        });
+
+        hideAllBtn.addEventListener('click', () => {
+            setAllCardsState(false);
+        });
+
+        function setAllCardsState(openState) {
+            const chars = Array.from(currentText);
+            if (chars.length === 0) return;
+
+            const cards = cardsContainer.querySelectorAll('.char-card');
+            let hasChanged = false;
+
+            cards.forEach((card, i) => {
+                if (charStates[i] !== openState) {
+                    charStates[i] = openState;
+                    const char = chars[i];
+                    const isSpace = (char === ' ' || char === '　' || char === '\n');
+                    const charToShow = char === '\n' ? '↵' : char;
+
+                    renderCardState(card, openState, charToShow, isSpace);
+                    hasChanged = true;
+                }
+            });
+
+            if (hasChanged) {
+                playBeepSound(openState);
+                updateCounters();
+            }
+        }
+
+        // --- カウンター表示更新 ---
+        function updateCounters(openNum, totalNum) {
+            const total = totalNum !== undefined ? totalNum : charStates.length;
+            const open = openNum !== undefined ? openNum : charStates.filter(Boolean).length;
+
+            openCountEl.textContent = open;
+            totalCountEl.textContent = total;
+        }
+
+        // --- 効果音ON/OFFトグル ---
+        soundToggleBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                soundIcon.className = "fa-solid fa-volume-high text-cyan-400";
+                soundLabel.textContent = "効果音: ON";
+                initAudio();
+                playTone(1000, audioCtx ? audioCtx.currentTime : 0, 0.05);
+            } else {
+                soundIcon.className = "fa-solid fa-volume-xmark text-slate-500";
+                soundLabel.textContent = "効果音: OFF";
+            }
+        });
+    </script>
+</body>
+</html>
