@@ -139,16 +139,44 @@
             </div>
         </section>
 
+        <!-- 伏せ字文コピー機能エリア -->
+        <section class="bg-slate-800/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-slate-700 shadow-xl space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/80 pb-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-copy text-yellow-400"></i>
+                    <h2 class="text-sm font-bold text-slate-200">虫食いテキストの生成・コピー</h2>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <label for="maskSymbol" class="text-slate-400 font-bold">伏せ字記号:</label>
+                    <select id="maskSymbol" class="bg-slate-900 text-yellow-300 font-bold border border-slate-600 rounded-lg px-2.5 py-1 outline-none focus:border-cyan-400 cursor-pointer">
+                        <option value="○">○（白丸）</option>
+                        <option value="●">●（黒丸）</option>
+                        <option value="◯">◯（大きな丸）</option>
+                        <option value="❓">❓（ハテナ）</option>
+                        <option value="＿">＿（アンダーバー）</option>
+                        <option value="□">□（四角）</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- プレビューとコピーボタン -->
+            <div class="flex flex-col sm:flex-row gap-3 items-stretch">
+                <div id="previewText" class="flex-1 bg-slate-900/90 p-3 rounded-xl border border-slate-700 text-yellow-300 font-mono text-sm sm:text-base break-all min-h-[44px] flex items-center select-all">
+                    （ここに虫食いテキストが表示されます）
+                </div>
+                <button id="copyMaskedBtn" type="button" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 text-sm active:scale-95 whitespace-nowrap">
+                    <i class="fa-regular fa-clone text-base"></i> 伏せ字文をコピー
+                </button>
+            </div>
+        </section>
+
         <!-- 文字カード表示エリア -->
-        <main class="bg-slate-900/80 p-4 sm:p-8 rounded-2xl border border-slate-800 min-h-[220px] flex flex-col justify-center items-center shadow-inner relative">
-            <div id="cardsContainer" class="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-full">
-                <!-- JavaScriptでここに動的に文字カードが生成されます -->
+        <section class="bg-slate-900/40 p-4 sm:p-6 rounded-2xl border border-slate-800/80 min-h-[160px] flex items-center justify-center relative">
+            <div id="cardsContainer" class="flex flex-wrap gap-2 sm:gap-2.5 justify-center items-center w-full"></div>
+            <div id="emptyNotice" class="text-slate-500 text-sm font-bold flex items-center gap-2 hidden">
+                <i class="fa-solid fa-circle-info"></i> 上記の枠に問題文を入力し、「セットする」ボタンを押してください。
             </div>
-            <div id="emptyNotice" class="text-slate-500 text-center py-8">
-                <i class="fa-solid fa-cubes text-4xl mb-3 opacity-40 block"></i>
-                <p>問題文を入力して「セットする」を押してください</p>
-            </div>
-        </main>
+        </section>
 
         <!-- 補足説明 -->
         <footer class="text-center text-xs text-slate-500 space-y-1">
@@ -156,6 +184,11 @@
             <p>※改行やスペースも1カードとして扱われます（空白文字は点線枠で表示）。</p>
         </footer>
 
+    </div>
+
+    <!-- トースト通知 -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-slate-950 px-5 py-2.5 rounded-full font-black text-sm shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none flex items-center gap-2 z-50">
+        <i class="fa-solid fa-check-circle"></i> クリップボードにコピーしました！
     </div>
 
     <!-- JavaScript ロジック -->
@@ -186,6 +219,10 @@
         const soundToggleBtn = document.getElementById('soundToggleBtn');
         const soundIcon = document.getElementById('soundIcon');
         const soundLabel = document.getElementById('soundLabel');
+        const maskSymbolSelect = document.getElementById('maskSymbol');
+        const previewTextEl = document.getElementById('previewText');
+        const copyMaskedBtn = document.getElementById('copyMaskedBtn');
+        const toastEl = document.getElementById('toast');
 
         // --- Web Audio API（サウンド合成機能）---
         let audioCtx = null;
@@ -288,12 +325,12 @@
 
             if (chars.length === 0) {
                 cardsContainer.innerHTML = '';
-                emptyNotice.classList.remove('hidden');
+                if (emptyNotice) emptyNotice.classList.remove('hidden');
                 updateCounters(0, 0);
                 return;
             }
 
-            emptyNotice.classList.add('hidden');
+            if (emptyNotice) emptyNotice.classList.add('hidden');
             cardsContainer.innerHTML = '';
 
             // 全て非表示で初期化
@@ -381,62 +418,132 @@
                 // 開いた状態のスタイル
                 if (isSpace) {
                     inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-slate-500 bg-slate-700/60 shadow-lg';
-                    content.className = 'char-content flex-1 flex items-center justify-center font-bold text-lg sm:text-xl text-slate-300';
+                    content.className = 'char-content flex-1 flex items-center justify-center font-black text-xl sm:text-2xl text-slate-300';
                 } else {
-                    inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-yellow-400 bg-gradient-to-b from-amber-400 to-yellow-500 text-slate-950 glow-gold shadow-lg';
-                    content.className = 'char-content flex-1 flex items-center justify-center font-black text-2xl sm:text-3xl text-slate-900 drop-shadow-sm scale-110 transition-transform';
+                    inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-amber-300 bg-gradient-to-b from-amber-400 to-yellow-500 glow-gold';
+                    content.className = 'char-content flex-1 flex items-center justify-center font-black text-xl sm:text-2xl text-slate-950 text-shadow';
                 }
                 content.textContent = charText;
                 dot.className = 'status-dot w-1.5 h-1.5 rounded-full bg-slate-900';
-
             } else {
                 cardEl.classList.remove('revealed');
-
-                // 伏せ状態のスタイル
+                
+                // 閉じた状態のスタイル
                 if (isSpace) {
                     inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-dashed border-slate-600 bg-slate-800/40';
+                    content.className = 'char-content flex-1 flex items-center justify-center font-black text-xl sm:text-2xl text-slate-600';
                 } else {
                     inner.className = 'card-inner w-full h-full rounded-xl flex flex-col items-center justify-between p-1 border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 shadow-md hover:border-cyan-500/50';
+                    content.className = 'char-content flex-1 flex items-center justify-center font-black text-xl sm:text-2xl text-slate-600';
                 }
-                content.className = 'char-content flex-1 flex items-center justify-center font-black text-xl sm:text-2xl text-slate-600';
                 content.textContent = '?';
                 dot.className = 'status-dot w-1.5 h-1.5 rounded-full bg-slate-700';
             }
         }
 
-        // --- 全体一括操作 ---
+        // --- 一括操作 ---
         showAllBtn.addEventListener('click', () => {
-            setAllCardsState(true);
-        });
-
-        hideAllBtn.addEventListener('click', () => {
-            setAllCardsState(false);
-        });
-
-        function setAllCardsState(openState) {
             const chars = Array.from(currentText);
             if (chars.length === 0) return;
 
+            charStates.fill(true);
+            playBeepSound(true);
+
             const cards = cardsContainer.querySelectorAll('.char-card');
-            let hasChanged = false;
-
-            cards.forEach((card, i) => {
-                if (charStates[i] !== openState) {
-                    charStates[i] = openState;
-                    const char = chars[i];
-                    const isSpace = (char === ' ' || char === '　' || char === '\n');
-                    const charToShow = char === '\n' ? '↵' : char;
-
-                    renderCardState(card, openState, charToShow, isSpace);
-                    hasChanged = true;
-                }
+            cards.forEach((card, index) => {
+                const char = chars[index];
+                const isSpace = (char === ' ' || char === '　' || char === '\n');
+                const charToShow = char === '\n' ? '↵' : char;
+                renderCardState(card, true, charToShow, isSpace);
             });
 
-            if (hasChanged) {
-                playBeepSound(openState);
-                updateCounters();
+            updateCounters();
+        });
+
+        hideAllBtn.addEventListener('click', () => {
+            const chars = Array.from(currentText);
+            if (chars.length === 0) return;
+
+            charStates.fill(false);
+            playBeepSound(false);
+
+            const cards = cardsContainer.querySelectorAll('.char-card');
+            cards.forEach((card, index) => {
+                const char = chars[index];
+                const isSpace = (char === ' ' || char === '　' || char === '\n');
+                const charToShow = char === '\n' ? '↵' : char;
+                renderCardState(card, false, charToShow, isSpace);
+            });
+
+            updateCounters();
+        });
+
+        // --- プレビュー生成＆コピー機能 ---
+        function updateMaskedPreview() {
+            const chars = Array.from(currentText);
+            if (chars.length === 0) {
+                previewTextEl.textContent = '（ここに虫食いテキストが表示されます）';
+                return;
             }
+
+            const maskSymbol = maskSymbolSelect.value;
+            const maskedStr = chars.map((char, i) => {
+                // 空白文字や改行はそのまま保持
+                if (char === ' ' || char === '　' || char === '\n') {
+                    return char;
+                }
+                return charStates[i] ? char : maskSymbol;
+            }).join('');
+
+            previewTextEl.textContent = maskedStr;
         }
+
+        maskSymbolSelect.addEventListener('change', updateMaskedPreview);
+
+        // トースト表示関数
+        function showToast(message) {
+            toastEl.innerHTML = `<i class="fa-solid fa-check-circle"></i> ${message}`;
+            toastEl.classList.remove('opacity-0', 'translate-y-4');
+            toastEl.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toastEl.classList.remove('opacity-100', 'translate-y-0');
+                toastEl.classList.add('opacity-0', 'translate-y-4');
+            }, 2000);
+        }
+
+        // コピー処理
+        copyMaskedBtn.addEventListener('click', () => {
+            const textToCopy = previewTextEl.textContent;
+            if (!currentText || textToCopy === '（ここに虫食いテキストが表示されます）') return;
+
+            // フォールバック関数
+            const fallbackCopy = (text) => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                textarea.style.pointerEvents = 'none';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('伏せ字文をコピーしました！');
+                } catch (err) {
+                    showToast('コピーに失敗しました');
+                }
+                document.body.removeChild(textarea);
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => showToast('伏せ字文をコピーしました！'))
+                    .catch(() => fallbackCopy(textToCopy));
+            } else {
+                fallbackCopy(textToCopy);
+            }
+        });
 
         // --- カウンター表示更新 ---
         function updateCounters(openNum, totalNum) {
@@ -445,6 +552,8 @@
 
             openCountEl.textContent = open;
             totalCountEl.textContent = total;
+
+            updateMaskedPreview();
         }
 
         // --- 効果音ON/OFFトグル ---
